@@ -1,0 +1,978 @@
+<head>
+<meta charset="utf-8" />
+<title>Blockscrusher</title>
+<link href='http://fonts.googleapis.com/css?family=Black+Ops+One' rel='stylesheet'>
+
+<script src="scripts/soundmanager2-min.js"></script>
+
+<style>
+body {
+  padding:0;
+  margin:0;
+  background:#666;
+}
+bgcanvas {
+  display:block;
+  margin:30px auto 0;
+  border:1px dashed #ccc;
+  background:#FFF;
+}
+fgcanvas {
+  display:block;
+  margin:30px auto 0;
+  border:1px dashed #ccc;
+  background:#FFF;
+}
+#audio {
+    display: none;
+}
+</style>
+<script>
+
+var soundManagerLoaded = false;
+soundManager.flashVersion = 9;
+soundManager.useFastPolling = true;
+soundManager.useHighPerformance = true;
+soundManager.onready(function() {
+   soundManagerLoaded = true;
+   SOUND = true; MUSIC = true;
+});
+soundManager.onerror = function() {
+	//alert("ERROR!");
+}
+soundManager.ontimeout(function() {
+   soundManagerLoaded = false;
+   soundManager = false;
+});
+soundManager.url = 'swf/';
+
+window.requestAnimFrame = (function(){
+      return  window.requestAnimationFrame       || 
+              window.webkitRequestAnimationFrame || 
+              window.mozRequestAnimationFrame    || 
+              window.oRequestAnimationFrame      || 
+              window.msRequestAnimationFrame     || 
+              function( callback ){
+                window.setTimeout(callback, 1000/60);
+              };
+    })();
+
+var canvas_bg,
+	canvas_fg,
+    ctx_bg,
+	ctx_fg,
+	music1,
+	width = 1000,
+	height = 100,
+	menuflag = true,
+	gameflag = false,
+	blinkflag = false,
+	loseflag = false,
+	remove = false,
+	score = 0,
+	enemiesHit = 0,
+	count = 0,
+	comboCount = 0,
+	
+	violetflag = false, yellowflag = false, multiflag = false,
+	
+	SOUND = false, MUSIC = false, frames = 0, random = 0,
+	
+	last_enemy,
+	
+	enemyTotal = 18,
+	enemies = [],
+	multienemies = [],
+	unenemies = [],
+	isMultiCreating = false,
+	enemy_x = -60,
+    enemy_y = 20,
+    enemy_w = 50,
+    enemy_h = 50,
+	speed = 0.75,
+	b1 = 15, b2 = 40, bb = 90, b3 = 90, b4 = 150, b5 = 250, b6 = 400, b7 = 500, b8 = 750, b9 = 1000,
+	c1 = 10, c2 = 25, c3 = 45, c4 = 70, c5 = 100,
+	speedChanged = false,
+	isCreated = false,
+	isReturning = false,
+	isEnemyCreating = true,
+	isMenuStyleChosen = false,
+	isFontStyleChosen = false,
+	comboChanged = false,
+	scoreChanged = false,
+	gameBgDrawFlag = true,
+	
+	ship_x = width - 50, ship_y = (height / 2) - 25, ship_w = 50, ship_h = 50,
+	bg1_x = -1000, bg2_x = 0, title_x = -500,
+	menuSpeed = 3, titleMenuSpeed = 1.6,
+	
+	laserTotal = 4,
+	lasers = [],
+	zonelength = 0,
+	
+	boss = [],
+	bosses = [], bossescount = 0,
+	boss_x = -120, boss_y = 5,
+	boss_w = 90, boss_h = 90, boss_s = 1.5,
+	bossflag = false, initBossFlag = true,
+	lastboss_x = 0, bossmissflag = false,
+	
+	degrees = 0,
+	
+	sboss = [],
+	sboss_x = -150, sboss_y = 5,
+	sboss_w = 90, sboss_h = 90, sboss_s = 1.5,
+	sbossflag = false, initSuperBossFlag = true, stopflag = false, accelflag = false,
+	accel = 0, mulcount = 0, mulcount_in = 0,
+	
+	uboss = [],
+	uboss_x = -250, uboss_y = -70,
+	uboss_w = 250, uboss_h = 250, uboss_s = 0.5,
+	ubossflag = false, initUltraBossFlag = true, chargeflag = false,
+	supcount = 0,
+	
+	chenemy_x = 0; chenemy_y = 0;
+	angle = 0, 
+    rx = 0, ry = 0, // the rotation x and y
+    px = 0, py = 0, // the objects center x and y
+    radius = 0; // the difference in y positions or the radius
+
+	
+window.addEventListener('load', onloadHandler, false);
+
+function onloadHandler()
+{
+   if (!soundManagerLoaded)
+   {
+      setTimeout(onloadHandler, 100);
+   }
+   else
+   {
+      
+	  
+	  /* LOADING GAME SOUNDS AND MUSIC */
+      if (soundManager)
+      {
+        soundManager.createSound({
+           id: 'ship_shoot',
+           url: 'sounds/ship_shoot.mp3',
+           volume: 80,
+           autoLoad: true,
+           multiShot: true
+        });
+        soundManager.createSound({
+           id: 'ship_shhuh',
+           url: 'sounds/ship_shhuh.mp3',
+           volume: 80,
+           autoLoad: true,
+           multiShot: true
+        });
+		soundManager.createSound({
+           id: 'enemy_block',
+           url: 'sounds/enemy_block.mp3',
+           volume: 80,
+           autoLoad: true,
+           multiShot: true
+        });
+		soundManager.createSound({
+           id: 'ship_boom',
+           url: 'sounds/ship_boom.mp3',
+           volume: 80,
+           autoLoad: true,
+           multiShot: true
+        });
+		music1 = soundManager.createSound({
+           id: 'soundtrack1',
+           url: 'sounds/soundtrack1(3).mp3',
+           volume: 60,
+           autoLoad: true,
+           multiShot: false,
+        });
+		music2 = soundManager.createSound({
+           id: 'soundtrack2',
+           url: 'sounds/soundtrack2(1).mp3',
+           volume: 60,
+           autoLoad: true,
+           multiShot: false,
+        });
+		music3 = soundManager.createSound({
+           id: 'soundtrack3',
+           url: 'sounds/soundtrack3(1).mp3',
+           volume: 60,
+           autoLoad: true,
+           multiShot: false,
+        });
+		music4 = soundManager.createSound({
+           id: 'soundtrack4',
+           url: 'sounds/soundtrack4.mp3',
+           volume: 60,
+           autoLoad: true,
+           multiShot: false,
+        });
+		init();
+      }
+   }
+}
+
+function playMusic(sound) {
+		sound.play({onfinish: function() {
+			if (!menuflag && enemiesHit < 15) playMusic(music2);
+			else if (!menuflag && enemiesHit < 40) playMusic(music3);
+			else if (!menuflag && enemiesHit < 90) playMusic(music4);
+			//if (enemiesHit == 90) playMusic(music4);
+			else playMusic(sound);
+		} 
+		});	
+}
+
+function clearCanvas() {
+ canvas_fg.width = canvas_fg.width;
+}
+
+function generateColors() {
+	random = Math.random();
+	
+	if (violetflag && yellowflag) {
+		   if (random > 0 && random < 0.2) return 0;
+		   else if (random > 0.2 && random < 0.4) return 1;
+		   else if (random > 0.4 && random < 0.6) return 2;
+		   else if (random > 0.6 && random < 0.8) return 3;
+		   else return 4;
+	
+	    }
+	else if (violetflag) {
+		   if (random > 0 && random < 0.25) return 0;
+		   else if (random > 0.25 && random < 0.5) return 1;
+		   else if (random > 0.5 && random < 0.75) return 2;
+		   else return 3;
+		}
+	else { if (random > 0 && random < 0.33) return 0;
+		   else if (random > 0.33 && random < 0.66) return 1;
+		   else return 2;
+        }    
+}
+
+function generateMulti() {
+	if ( Math.floor(Math.random()*6) == 5 ) isMultiCreating = true;
+}
+	
+function drawShip() {
+	ctx_bg.drawImage(ship,ship_x,ship_y);
+}	
+
+function drawEnemies() {
+	if ( (enemies.length >= 1 || multienemies.length >= 1) && enemies.length < enemyTotal) {
+		if (last_enemy[0] > 0 && isEnemyCreating) {
+					if (multiflag && isMultiCreating) {
+						last_enemy = [enemy_x, enemy_y, enemy_w, enemy_h, speed, generateColors(), false, false];
+						multienemies.push(last_enemy);
+						multienemies.push([enemy_x + 5, enemy_y + 5, enemy_w - 10, enemy_h - 10, speed, generateColors(), false, false]);
+						multienemies.push([enemy_x + 10, enemy_y + 10, enemy_w - 20, enemy_h - 20, speed, generateColors(), false, true]);
+						count++; isMultiCreating = false;
+					} 
+					else {  last_enemy = [enemy_x, enemy_y, enemy_w, enemy_h, speed, generateColors(), false, generateMulti()]; 
+							enemies.push(last_enemy); count++; }
+		}
+		for (var i = 0; i < enemies.length; i++) {
+				if ( (enemies[i][6] == true) || (enemies[i][0] > width) ) { enemies.splice(i, 1);}
+				if (enemies[i][5] == 0) ctx_fg.drawImage(red_cube,enemies[i][0],enemies[i][1]); 
+				else if (enemies[i][5] == 1) ctx_fg.drawImage(green_cube,enemies[i][0],enemies[i][1]);  
+				else if (enemies[i][5] == 2) ctx_fg.drawImage(blue_cube,enemies[i][0],enemies[i][1]);
+				else if (enemies[i][5] == 3 && violetflag) { ctx_fg.fillStyle = chooseColor(enemies[i][5]); ctx_fg.fillRect(enemies[i][0], enemies[i][1], enemies[i][2], enemies[i][3]);}
+				else if (enemies[i][5] == 4 && yellowflag) ctx_fg.drawImage(yellow_cube,enemies[i][0],enemies[i][1]); 
+				else { ctx_fg.ctx_fg.fillStyle = "#000"; ctx_fg.fillRect(enemies[i][0], enemies[i][1], enemies[i][2], enemies[i][3]); }
+				//if (enemies[i][5] == 1) ctx_fg.drawImage(green_cube,enemies[i][0],enemies[i][1]);
+				//else {ctx_fg.fillStyle = chooseColor(enemies[i][5]); ctx_fg.fillRect(enemies[i][0], enemies[i][1], enemies[i][2], enemies[i][3]);}
+			}
+		
+		for (var i = 0; i < multienemies.length; i++) {
+				if ( (multienemies[i][6] == true) || (multienemies[i][0] > width) ) { multienemies.splice(i, 1); }
+				ctx_fg.fillStyle = chooseColor(multienemies[i][5]); ctx_fg.fillRect(multienemies[i][0], multienemies[i][1], multienemies[i][2], multienemies[i][3]);
+			}
+	}
+	else if (isEnemyCreating) { 
+		if (multiflag && isMultiCreating) {
+						last_enemy = [enemy_x, enemy_y, enemy_w, enemy_h, speed, generateColors(), false, false];
+						multienemies.push(last_enemy);
+						multienemies.push([enemy_x + 5, enemy_y + 5, enemy_w - 10, enemy_h - 10, speed, generateColors(), false, false]);
+						multienemies.push([enemy_x + 10, enemy_y + 10, enemy_w - 20, enemy_h - 20, speed, generateColors(), false, true]);
+						count++; isMultiCreating = false;
+		} 
+		else { last_enemy = [enemy_x, enemy_y, enemy_w, enemy_h, speed, generateColors(), false, generateMulti()];
+		       enemies.push(last_enemy); count++; }
+	}
+	else if (bossflag && !ubossflag) {
+		degrees += 0.016;
+		ctx_fg.save(); ctx_fg.translate(bosses[0][0][0] + (bosses[0][0][2]/2), bosses[0][0][1]+(bosses[0][0][3]/2)); ctx_fg.rotate(degrees);
+		for (var i = 0; i < bosses[0].length; i++) {
+			if ( (bosses[0][i][6] == true) || (bosses[0][i][0] > width) ) { bosses[0].splice(i, 1);}
+			ctx_fg.fillStyle = chooseColor(bosses[0][i][5]); ctx_fg.fillRect(-bosses[0][i][2]/2, -bosses[0][i][3]/2, bosses[0][i][2], bosses[0][i][3]); 
+		}
+		ctx_fg.restore();
+	}
+	else if (sbossflag) {
+		degrees += 0.016;
+		ctx_fg.save(); ctx_fg.translate(sboss[0][0] + (sboss[0][2]/2), sboss[0][1]+(sboss[0][3]/2)); ctx_fg.rotate(degrees);
+		for (var i = 0; i < sboss.length; i++) {
+			if ( (sboss[i][6] == true) || (sboss[i][0] > width) ) { sboss.splice(i, 1);}
+			ctx_fg.fillStyle = chooseColor(sboss[i][5]); ctx_fg.fillRect(-sboss[i][2]/2, -sboss[i][3]/2, sboss[i][2], sboss[i][3]); 
+		}
+		ctx_fg.restore();
+		if (multienemies.length > 0) {
+				for (var i = 0; i < multienemies.length; i++) {
+					if ( (multienemies[i][6] == true) || (multienemies[i][0] > width) ) { multienemies.splice(i, 1); }
+					ctx_fg.fillStyle = chooseColor(multienemies[i][5]); ctx_fg.fillRect(multienemies[i][0], multienemies[i][1], multienemies[i][2], multienemies[i][3]);
+				}
+		}
+	}
+	else if (ubossflag || (ubossflag && bossflag)) {
+		degrees += 0.01;
+		ctx_fg.save(); ctx_fg.translate(uboss[0][0] + (uboss[0][2]/2), uboss[0][1]+(uboss[0][3]/2)); ctx_fg.rotate(degrees);
+		for (var i = 0; i < uboss.length; i++) {
+			if ( (uboss[i][6] == true) || (uboss[i][0] > width) ) { uboss.splice(i, 1);}
+			ctx_fg.fillStyle = chooseColor(uboss[i][5]); ctx_fg.fillRect(-uboss[i][2]/2, -uboss[i][3]/2, uboss[i][2], uboss[i][3]); 
+		}
+		ctx_fg.restore();
+		if (bosses.length > 0) {
+				//ctx_fg.save(); ctx_fg.translate(boss[0][0] + (boss[0][2]/2), boss[0][1]+(boss[0][3]/2)); ctx_fg.rotate(degrees);
+				for (var i = 0; i < bosses.length; i++) {
+					for (var j = 0; j < bosses[i].length; j++) {
+							if ( (bosses[i][j][6] == true) || (bosses[i][j][0] > width) ) { bosses[i].splice(j, 1); }
+							ctx_fg.fillStyle = chooseColor(bosses[i][j][5]); ctx_fg.fillRect(bosses[i][j][0], bosses[i][j][1], bosses[i][j][2], bosses[i][j][3]);
+					}
+				}
+				//ctx_fg.restore();
+		}
+		if (unenemies.length > 0) {
+				for (var i = 0; i < unenemies.length; i++) {
+					if ( (unenemies[i][6] == true) || (unenemies[i][0] > width) ) { unenemies.splice(i, 1); }
+					
+					rx = uboss[0][0] + uboss[0][2]/2; ry = uboss[0][1] + uboss[0][3]/2;
+					px = uboss[0][0] + uboss[0][2]/2; py = uboss[0][1] - 60;
+					radius = ry - py;
+					dx = rx + radius * Math.sin(unenemies[i][7]);  unenemies[i][0] = dx;
+                    dy = ry - radius * Math.cos(unenemies[i][7]);  unenemies[i][1] = dy;
+					
+					ctx_fg.save();
+					ctx_fg.translate(dx, dy);
+					ctx_fg.rotate(unenemies[i][7]);
+					ctx_fg.translate(-dx, -dy);
+					ctx_fg.fillStyle = chooseColor(unenemies[i][5]); 
+					ctx_fg.fillRect(dx - unenemies[i][2]/2, dy - unenemies[i][3]/2, unenemies[i][2], unenemies[i][3]);
+					ctx_fg.restore();
+					unenemies[i][7] += 0.02;
+
+				}
+				angle++;
+		}
+	}
+}
+
+function moveEnemies() {
+	  for (var i = 0; i < enemies.length; i++) {
+				if (enemies[i][0] < width) {
+					enemies[i][0] += enemies[i][4];
+				}
+		}
+	  if (!ubossflag) { 
+				for (var i = 0; i < multienemies.length; i++) {
+				if (multienemies[i][0] < width) {
+					multienemies[i][0] += multienemies[i][4];
+				}
+		}
+	  }
+	  if (bossflag) {
+		for (var i=0; i<bosses.length; i++) {
+			for (var j=0; j<bosses[i].length; j++) {
+				if (bosses[i][j][0] < width) {
+					bosses[i][j][0] += bosses[i][j][4];
+				}
+			}
+		}
+	  }
+	  if (sbossflag) { 
+		if (!stopflag) {
+			if	(sboss[0][0] < 200) {
+				for (var i=0; i < sboss.length; i++){
+					if (sboss[i][0] < width) {
+						sboss[i][0] += sboss[i][4];
+					}
+				}
+			} else stopflag = true;	
+		}
+		else if (accelflag) {
+			for (var i=0; i < sboss.length; i++){
+					if (sboss[i][0] < width) {
+						accel += 0.01; 
+						sboss[i][0] += sboss[i][4] + accel;
+					}
+				}
+		}
+	 }
+	  if (ubossflag) {
+		if (!stopflag) {
+			if (uboss[0][0] < 100) {
+				for (var i=0; i<uboss.length; i++){
+					if (uboss[i][0] < width) {
+						uboss[i][0] += uboss[i][4];
+					}
+				}
+			} else stopflag = true;
+		} else if (chargeflag) {
+				for (var i=0; i<uboss.length; i++){
+					if (uboss[i][0] < width) {
+						uboss[i][0] += 0.3;
+					}
+				}
+		  }
+	 }
+}
+
+function drawLaser() {
+  if (lasers.length)
+    for (var i = 0; i < lasers.length; i++) {
+		ctx_fg.fillStyle = chooseColor(lasers[i][4]);
+        ctx_fg.fillRect(lasers[i][0],lasers[i][1],lasers[i][2],lasers[i][3]);
+   }
+}
+
+function chooseColor(object) {
+	switch(object) {
+			case 0: return "#f00"; 
+			case 1: return "#0f0"; 
+			case 2: return "#0ff"; 
+			case 3: return "#f0f";
+			case 4: return "#ff0";
+			case 5: return "#000";
+			default: return "#fff"; 
+        }
+}
+
+function moveLaser() {
+ for (var i = 0; i < lasers.length; i++) {
+	if (isReturning && lasers[i][5]) { 
+		lasers[i][0] += 10;
+		if (lasers[i][0] == ship_x) { lasers.splice(i,1); isReturning = false; }
+	}
+    else if (lasers[i][0] > -11) {
+      lasers[i][0] -= 10;
+    } else if (lasers[i][0] < -10) {
+      lasers.splice(i, 1);
+   }
+ }
+}
+
+function hitMultiLaserTest() {
+	if (lasers.length && multienemies.length){
+				if ( (lasers[0][0] <= (multienemies[0][0] + multienemies[0][3]) && lasers[0][0] > zonelength) )  {
+					if (lasers[0][4] == multienemies[0][5] && multienemies[0][6] == false) {
+							lasers.splice(0,1);
+							multienemies[0][6] = true;
+							if (multienemies[0][7] == true) enemiesHit++;
+							speedChanged = false;
+							if (sbossflag) {  mulcount_in++; if (mulcount_in == 15) accelflag = true; }
+					} else { 
+						lasers.splice(0, 1);
+						if (SOUND && soundManager) soundManager.play('enemy_block');
+					  }
+				}
+				else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+ }
+}
+
+function hitUnLaserTest() {
+	if (lasers.length && unenemies.length){
+		for (var i=0; i < unenemies.length; i++) {
+				if ( (lasers[0][0] <= unenemies[i][0] && lasers[0][1] <= unenemies[i][1] && lasers[0][1] >= unenemies[i][1] - unenemies[i][3] && lasers[0][0] > zonelength) )  {
+						if (lasers[0][4] == unenemies[0][5] && unenemies[0][6] == false) {
+							lasers.splice(0,1);
+							unenemies[i][6] = true;
+						} else {
+							lasers.splice(0,1);
+							if (SOUND && soundManager) soundManager.play('enemy_block');
+						}
+				}
+				else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+		}
+ }
+}
+
+function hitLaserTest() {
+ if (lasers.length && enemies.length){
+				if ( (lasers[0][0] <= (enemies[0][0] + enemies[0][3]) && lasers[0][0] > zonelength) )  {
+					if (lasers[0][4] == enemies[0][5] && enemies[0][6] == false) {
+							lasers.splice(0,1);
+							enemies[0][6] = true;
+							enemiesHit++;
+							comboCount++;
+							if (comboCount > c5) score += 10;
+							else if (comboCount > c4) score +=7;
+							else if (comboCount > c3) score +=5;
+							else if (comboCount > c2) score +=3;
+							else if (comboCount > c1) score +=2;
+							else score++;
+							scoreChanged = true;
+							speedChanged = false;
+					} else { 
+						lasers.splice(0, 1);
+						if (SOUND && soundManager) soundManager.play('enemy_block');
+						for (var i = 0;i < enemies.length; i++){
+							enemies[i][0] += 60;
+						}
+						for (var i = 0;i < multienemies.length; i++){
+							multienemies[i][0] += 60;
+						}
+						if (multiflag && isMultiCreating) {
+							last_enemy = [last_enemy[0] - 60, enemy_y + 5, enemy_w - 10, enemy_h - 10, speed, generateColors(), false, false];
+							multienemies.push(last_enemy);
+							multienemies.push([last_enemy[0] - 60 + 5, enemy_y + 5, enemy_w - 10, enemy_h - 10, speed, generateColors(), false, false]);
+							multienemies.push([last_enemy[0] - 60 + 10, enemy_y + 10, enemy_w - 20, enemy_h - 20, speed, generateColors(), false, true]);
+							isMultiCreating = false;
+						} else { last_enemy = [last_enemy[0] - 60, enemy_y, enemy_w, enemy_h, speed, generateColors(), false, generateMulti()]; 
+								 enemies.push(last_enemy); }
+						enemiesHit--;
+						comboCount = 0;
+						comboChanged = true;
+					  }
+				}
+				else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+ }
+}
+
+function hitBossTest() {
+	if (bossflag && lasers.length) {
+		if ( (lasers[0][0] <= (bosses[0][0][0] + bosses[0][0][3]) && lasers[0][0] > zonelength) )  {
+						if (lasers[0][4] == bosses[0][0][5] && bosses[0][0][6] == false) {
+								lasers.splice(0,1);
+								bosses[0][0][6] = true;
+								if (bosses[0].length == 1) {if(!ubossflag){bossflag = false;} bosses.splice(0,1); score += 100; scoreChanged = true; speedChanged = false;}	
+								if (bosses.length == 0) { bossflag = false; chargeflag = true;}
+						} else {
+							lasers.splice(0,1);
+							if (SOUND && soundManager) soundManager.play('enemy_block');
+							if (ubossflag) { bossmissflag = true; lastboss_x = bosses[0][bosses[0].length - 1][0] - 35; bosses[0] = []; bossescount = 0; initBoss(); }
+							else { 
+								boss_x = bosses[0][0][0];
+								bosses[0] = [];
+								bossescount = 0;
+								initBoss(); 
+							}
+						}
+	    }
+		else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+    }
+}
+
+function hitSuperBossTest() {
+	if (sbossflag && lasers.length) {
+		if ( (lasers[0][0] <= (sboss[0][0] + sboss[0][3]) && lasers[0][0] > zonelength) )  {
+						if (lasers[0][4] == sboss[0][5] && sboss[0][6] == false) {
+								lasers.splice(0,1);
+								sboss[0][6] = true;
+								if (sboss.length == 1) {sbossflag = false; score += 500; scoreChanged = true; speedChanged = false;}
+								
+						} else {
+							lasers.splice(0,1);
+							if (SOUND && soundManager) soundManager.play('enemy_block');
+							sboss_x = sboss[0][0];
+							sboss = [];
+							initSuperBoss();
+						}
+	    }
+		else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+    }
+}
+
+function hitUltraBossTest() {
+	if (ubossflag && lasers.length) {
+		if ( (lasers[0][0] <= (uboss[0][0] + uboss[0][3]) && lasers[0][0] > zonelength) )  {
+						if (lasers[0][4] == uboss[0][5] && uboss[0][6] == false) {
+								lasers.splice(0,1);
+								uboss[0][6] = true;
+								if (uboss.length == 1) {ubossflag = false; bossflag = false; multienemies = []; score += 1000; scoreChanged = true; speedChanged = false;}
+								
+						} else {
+							lasers.splice(0,1);
+							if (SOUND && soundManager) soundManager.play('enemy_block');
+							uboss_x = uboss[0][0];
+							uboss = [];
+							initUltraBoss();
+						}
+	    }
+		else if (lasers[0][0] <= zonelength) {lasers.splice(0,1);}
+    }
+}
+
+function hitLoseTest(){
+	for (var  i=0; i < enemies.length; i++){
+		if (enemies[i][0] + enemies[i][3] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+		}
+	}
+	if (multienemies.length && multienemies[0][0] + multienemies[0][3] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+	}
+	
+	if (bossflag && bosses.length && bosses[0][0][0] + bosses[0][0][3] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+	}
+	if (sbossflag && sboss.length && sboss[0][0] + sboss[0][3] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+	}
+	if (ubossflag && uboss.length && uboss[0][0] + uboss[0][3] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+	}
+	if (ubossflag && unenemies.length) {
+		for (var i=0; i<unenemies.length;i++) {
+		    if (unenemies[i][0] >= ship_x) {
+				loseflag = true;
+				if (SOUND && soundManager) soundManager.play('ship_boom');
+			}
+		}
+	}
+}
+
+function showScore() {
+	ctx_fg.clearRect(0, 0, width, height);
+	ctx_fg.font = '20px Black Ops One';
+	ctx_fg.fillStyle = '#000';
+	ctx_fg.fillText('Score: ', 10, 93);
+	ctx_fg.fillText(score, 100, 93);
+	ctx_fg. fillText(enemiesHit, 200, 93);
+	ctx_fg. fillText(count, 300, 93);
+	//ctx_fg. fillText(sbossflag, 400, 93);
+	//ctx_fg. fillText(mulcount_in, 400, 93);
+	ctx_fg.fillText('Combo: ', 810, 93);
+	if (comboCount > c5) ctx_fg.fillText('x6', 900, 93);
+		else if (comboCount > c4) ctx_fg.fillText('x5', 900, 93);
+			else if (comboCount > c3) ctx_fg.fillText('x4', 900, 93);
+					else if (comboCount > c2) ctx_fg.fillText('x3', 900, 93);
+						else if (comboCount > c1) ctx_fg.fillText('x2', 900, 93);
+							else ctx_fg.fillText('x1', 900, 93);
+	//ctx.fillText(comboCount, 900, 93);
+	comboChanged = false;
+	scoreChanged = false;
+}
+
+function initEnemies() {
+		last_enemy = [enemy_x, enemy_y, enemy_w, enemy_h, speed, generateColors(), false]; 
+		enemies.push(last_enemy); count++;
+}
+
+function initMultiEnemies() {
+		multienemies.push([enemy_x, enemy_y, enemy_w, enemy_h, 2, generateColors(), false]);
+		multienemies.push([enemy_x + 5, enemy_y + 5, enemy_w - 10, enemy_h - 10, 2, generateColors(), false]);
+		multienemies.push([enemy_x + 10, enemy_y + 10, enemy_w - 20, enemy_h - 20, 2, generateColors(), false]);
+}
+
+function initUnEnemies() {
+		if( mulcount == 8 || mulcount == 9) unenemies.push([chenemy_x, chenemy_y, enemy_w, enemy_h, 2, generateColors(), false, 0]);
+		else unenemies.push([chenemy_x, chenemy_y, enemy_w, enemy_h, 2, 5, false, 0]);
+}
+
+function initBoss() {
+	if(ubossflag && bossmissflag) {
+		boss = [];
+		boss.push([lastboss_x,boss_y,boss_w,boss_h,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+5,boss_y+5,boss_w-10,boss_h-10,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+10,boss_y+10,boss_w-20,boss_h-20,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+15,boss_y+15,boss_w-30,boss_h-30,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+20,boss_y+20,boss_w-40,boss_h-40,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+25,boss_y+25,boss_w-50,boss_h-50,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+30,boss_y+30,boss_w-60,boss_h-60,boss_s,generateColors(),false,false]);
+		boss.push([lastboss_x+35,boss_y+35,boss_w-70,boss_h-70,boss_s,generateColors(),false,true]);
+		bosses[bossescount] = boss;
+		bossescount++; bossmissflag = false;
+	} else {
+		boss = [];
+		boss.push([boss_x,boss_y,boss_w,boss_h,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+5,boss_y+5,boss_w-10,boss_h-10,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+10,boss_y+10,boss_w-20,boss_h-20,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+15,boss_y+15,boss_w-30,boss_h-30,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+20,boss_y+20,boss_w-40,boss_h-40,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+25,boss_y+25,boss_w-50,boss_h-50,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+30,boss_y+30,boss_w-60,boss_h-60,boss_s,generateColors(),false,false]);
+		boss.push([boss_x+35,boss_y+35,boss_w-70,boss_h-70,boss_s,generateColors(),false,true]);
+		bosses.push(boss);
+		bossescount++;
+	} 
+}
+
+function initSuperBoss() {
+	sboss.push([sboss_x,sboss_y,sboss_w,sboss_h,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+5,sboss_y+5,sboss_w-10,sboss_h-10,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+10,sboss_y+10,sboss_w-20,sboss_h-20,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+15,sboss_y+15,sboss_w-30,sboss_h-30,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+20,sboss_y+20,sboss_w-40,sboss_h-40,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+25,sboss_y+25,sboss_w-50,sboss_h-50,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+30,sboss_y+30,sboss_w-60,sboss_h-60,sboss_s,generateColors(),false]);
+	sboss.push([sboss_x+35,sboss_y+35,sboss_w-70,sboss_h-70,sboss_s,generateColors(),false]);
+}
+
+function initUltraBoss() {
+	frames = 0; if (!chargeflag) { stopflag = false; supcount = 0; mulcount = 0; bossescount = 0;}  
+	uboss.push([uboss_x,uboss_y,uboss_w,uboss_h,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+5,uboss_y+5,uboss_w-10,uboss_h-10,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+10,uboss_y+10,uboss_w-20,uboss_h-20,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+15,uboss_y+15,uboss_w-30,uboss_h-30,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+20,uboss_y+20,uboss_w-40,uboss_h-40,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+25,uboss_y+25,uboss_w-50,uboss_h-50,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+30,uboss_y+30,uboss_w-60,uboss_h-60,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+35,uboss_y+35,uboss_w-70,uboss_h-70,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+40,uboss_y+40,uboss_w-80,uboss_h-80,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+45,uboss_y+45,uboss_w-90,uboss_h-90,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+50,uboss_y+50,uboss_w-100,uboss_h-100,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+55,uboss_y+55,uboss_w-110,uboss_h-110,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+60,uboss_y+60,uboss_w-120,uboss_h-120,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+65,uboss_y+65,uboss_w-130,uboss_h-130,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+70,uboss_y+70,uboss_w-140,uboss_h-140,uboss_s,generateColors(),false]);
+	uboss.push([uboss_x+75,uboss_y+75,uboss_w-150,uboss_h-150,uboss_s,generateColors(),false]);
+}
+
+function checkChange() {
+	if (bossflag || sbossflag || ubossflag) { isEnemyCreating = false; }
+	else if (count == b1 || count == b2 || count == b3 && !bossflag || count == b4 || count == b5 || count == b6 || count == b7 || count == b8 || count == b9) {
+		if (count == enemiesHit) { isEnemyCreating = true; }
+		else isEnemyCreating = false;
+	}
+}
+
+function changeLevel() {
+	if (enemiesHit == 15) { 
+		speed = 1;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (enemiesHit == 40) { 
+		speed = 1.25;
+		multiflag = true;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (initBossFlag && enemiesHit == 90) {
+		bossflag = true;
+		if (initBossFlag) { initBoss(); initBossFlag = false; }
+		speedChanged = true;
+	}
+	if (!bossflag && enemiesHit == 90) { 
+		violetflag = true;
+		speedChanged = true;
+	}
+	if (enemiesHit == 150) { 
+		speed = 1.35;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (enemiesHit == 250) { 
+		speed = 1.5;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (initSuperBossFlag && enemiesHit == 400) {
+		sbossflag = true;
+		if (initSuperBossFlag) { initSuperBoss(); initSuperBossFlag = false; }
+		speedChanged = true;
+	}
+	if (!sbossflag && enemiesHit == 400) {
+		speed = 1;
+		yellowflag = true;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (enemiesHit == 500) { 
+		speed = 1.5;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (enemiesHit == 750) {
+		speed = 2;
+		for (var i=0; i < enemies.length; i++) {
+			enemies[i][4] = speed;
+		}
+		speedChanged = true;
+	}
+	if (initUltraBossFlag && enemiesHit == 1000) {
+		ubossflag = true;
+		if (initUltraBossFlag) { initUltraBoss(); initUltraBossFlag = false; }
+		speedChanged = true;
+	}	
+	speedChanged = false;
+}
+
+function blink(){
+	if (blinkflag) blinkflag = false;
+	else blinkflag = true;
+}
+
+function drawMenu() {
+	ctx_bg.clearRect(0, 0, width, height);
+	if (!isMenuStyleChosen) {
+		ctx_fg.font = '30px Black Ops One';
+		ctx_fg.fillStyle = '#000';
+		isMenuStyleCosen = true;
+	}
+	ctx_bg.drawImage(background_1,bg1_x,0);
+	ctx_bg.drawImage(background_2,bg2_x,0);
+	ctx_fg.fillText('BLOCKSCRUSHER', title_x, 50);
+	bg1_x += menuSpeed;
+	bg2_x += menuSpeed;
+	if (title_x < width/2) title_x += titleMenuSpeed;
+	else if (blinkflag) { ctx_fg.font = '16px Black Ops One'; ctx_fg.fillText('press start', title_x, 65); }	
+	if (bg1_x > width) { bg1_x = -1000; bg2_x = 0; }
+	if (bg2_x > width) { bg2_x = -1000; bg1_x = 0; }
+}
+
+function init() {
+  canvas_bg = document.getElementById('bgcanvas');
+  ctx_bg = canvas_bg.getContext('2d');
+  canvas_fg = document.getElementById('fgcanvas');
+  ctx_fg = canvas_fg.getContext('2d');
+  ship = new Image();
+  ship.src = "images/cru.png";
+  background_1 = new Image();
+  background_1.src = "images/backg_1.png";
+  background_2 = new Image();
+  background_2.src = "images/backg_2.png";
+  red_cube = new Image();
+  red_cube.src = "images/red2.png";
+  green_cube = new Image();
+  green_cube.src = "images/green2.png";
+  blue_cube = new Image();
+  blue_cube.src = "images/cyan2.png";
+  yellow_cube = new Image();
+  yellow_cube.src = "images/sunny2.png";
+  initEnemies();
+  //setInterval(gameLoop, 25);
+  //playMusic(music1);
+  animLoop();
+  if (menuflag) setInterval(blink, 1000);
+  document.addEventListener('keydown', keyDown, false);
+}
+
+function animLoop(){
+    requestAnimFrame(animLoop);
+    gameLoop();
+}
+
+function gameLoop() {
+  if (menuflag){
+	clearCanvas();
+	drawMenu();
+  }
+  else if (!loseflag && !menuflag){
+	  //ctx.clearRect(0, 0, width, height);
+	  canvas_fg.width = canvas_fg.width;
+	  //checkSoundPlaying();
+	  if (gameBgDrawFlag) { ctx_bg.fillStyle = "fff"; ctx_bg.fillRect(0,0,1000,1000); gameBgDrawFlag = false;}
+	  /*if (scoreChanged || comboChanged)*/ showScore();
+	 
+	  if (!speedChanged) changeLevel();
+	  checkChange();
+	  hitLoseTest();
+	  hitLaserTest();
+	  hitMultiLaserTest();
+	  if (bossflag) hitBossTest();
+	  if (sbossflag) { frames++; hitSuperBossTest(); 
+						if (stopflag) { 
+							if (frames % 60 == 0 && mulcount < 5) {mulcount++; initMultiEnemies(); }
+						}
+	  }
+	  if (ubossflag) { frames++; hitUltraBossTest();
+						if (stopflag) { 
+							if (frames % 200 == 0 && supcount < 3) {supcount++; bossflag = true; initBoss(); }
+						}
+						if (chargeflag) {
+							if (angle % 36 == 0 && mulcount < 9) {mulcount++; px = uboss[0][0] + uboss[0][2]/2; py = uboss[0][1] - 60; chenemy_x = uboss[0][0] + uboss[0][2]/2 - enemy_w/2; chenemy_y = uboss[0][1] - 60; initUnEnemies(); } hitUnLaserTest();
+						}
+	  }
+	  moveLaser();
+	  moveEnemies();
+	  drawShip();
+	  drawLaser();
+	  drawEnemies();
+	  //drawZone();
+  } else {
+	canvas_fg.width = canvas_fg.width;
+	ctx_fg.font = '14px Black Ops One';
+	ctx_fg.fillStyle = '#000';
+	ctx_fg.fillText('You Lose!', 50, height / 2 - 10);
+	ctx_fg.fillText('Total score:', 50, height / 2 + 10);
+	ctx_fg.fillText(score, 190, height / 2 + 10);
+  }
+}
+
+/*
+	********************************************************************************************
+    *********************************GAME CONTROLS**********************************************
+	********************************************************************************************
+*/
+function keyDown(e) {
+	if (menuflag) {
+		if (e.keyCode == 13) { menuflag = false;}
+	}
+	else {
+	 if (e.keyCode == 90) { if ( (!lasers.length) || (lasers[lasers.length-1][0] < ship_x - 50) ) { 
+			lasers.push([ship_x, ship_y + 20, 20, 4, 0, false]);
+			if (SOUND && soundManager) soundManager.play('ship_shoot');
+	        } 
+	 }
+	 if (e.keyCode == 88) { if ( (!lasers.length) || (lasers[lasers.length-1][0] < ship_x - 50) ) {
+			lasers.push([ship_x, ship_y + 20, 20, 4, 1, false]);
+			if (SOUND && soundManager) soundManager.play('ship_shoot');
+		}
+     }
+	 if (e.keyCode == 67) { if ( (!lasers.length) || (lasers[lasers.length-1][0] < ship_x - 50) ) { 
+			lasers.push([ship_x, ship_y + 20, 20, 4, 2, false]);
+			if (SOUND && soundManager) soundManager.play('ship_shoot');
+		}
+	 }
+	 if (e.keyCode == 86 && violetflag) { if ( (!lasers.length) || (lasers[lasers.length-1][0] < ship_x - 50) ) { 
+			lasers.push([ship_x, ship_y + 20, 20, 4, 3, false]);
+			if (SOUND && soundManager) soundManager.play('ship_shoot');
+	    }
+	 }
+	 if (e.keyCode == 66 && yellowflag) { if ( (!lasers.length) || (lasers[lasers.length-1][0] < ship_x - 50) ) { 
+			lasers.push([ship_x, ship_y + 20, 20, 4, 4, false]);
+			if (SOUND && soundManager) soundManager.play('ship_shoot');
+		}
+     }
+	 if (e.keyCode == 32 && !isReturning && lasers.length) { 
+		if (lasers.length && lasers[lasers.length - 1][0] < ship_x - 10 ) { 
+			lasers[lasers.length - 1][5] = true; isReturning = true;
+			if (SOUND && soundManager) soundManager.play('ship_shhuh');
+		} 
+	 }
+	 if (e.keyCode == 77) { 
+			if (MUSIC && SOUND) { MUSIC = false; } 
+			else if (!MUSIC && SOUND) { SOUND = false; }
+			else { MUSIC = true; SOUND = true; }
+		}
+	} 
+}
+
+window.onload = init;
+</script>
+</head>
+
+<body>
+  <canvas id="bgcanvas" width="1000" height="100" style = "position:absolute; z-index:0"></canvas>
+  <canvas id="fgcanvas" width="1000" height="100" style = "position:absolute; z-index:1"></canvas>
+</body>
+</html>
